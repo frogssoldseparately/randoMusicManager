@@ -1,0 +1,91 @@
+package parser
+
+import (
+	"slices"
+
+	"github.com/dlclark/regexp2/v2"
+)
+
+type Expression struct {
+	id int
+	components []*Token
+	line int
+	column int
+}
+
+const (
+	stringlitId int = 0
+	funcRefId int = 1
+	varSetExpId int = 2
+	varRefExpId int = 3
+	endblockId int = 4
+	uncappedNewlineId int = 5
+)
+
+var expressionMatchers = map[int]*regexp2.Regexp{
+	funcRefId: regexp2.MustCompile(`^((\x03(\x08)*?\x09))`, regexOptions),
+	varSetExpId: regexp2.MustCompile(`^((\x01(?!\x09)))`, regexOptions),
+	varRefExpId: regexp2.MustCompile(`^((\x02\x06))`, regexOptions),
+	endblockId: regexp2.MustCompile(`^((\x07))`, regexOptions),
+	uncappedNewlineId: regexp2.MustCompile(`^((\x09))`, regexOptions),
+	stringlitId: regexp2.MustCompile(`^((\x05)|((\x08|\x00)+?(\x09|$)))`, regexOptions),
+}
+
+func filterTokens(tokens *[]*Token, filters []int) {
+	replacement := []*Token{}
+	for _, token := range *tokens {
+		if !slices.Contains(filters, token.id) {
+			replacement = append(replacement, token)
+		}
+	}
+	*tokens = replacement
+}
+
+func (parser *Parser) makeExpression(id int, components []*Token) *Expression {
+	ignore := false
+	empty := false
+	var filters []int
+	line := components[0].line
+	column := components[0].column
+
+	switch id {
+	case funcRefId:
+		filters = []int{newlineId}
+	case varRefExpId:
+		filters = []int{leftBraceId}
+	case uncappedNewlineId:
+		ignore = true
+	case stringlitId:
+		filters = []int{newlineId}
+	default:
+		// do nothing
+	}
+
+	if ignore {
+		return nil
+	}
+	if empty {
+		components = []*Token{}
+	}
+	if len(components) > 0 && len(filters) > 0 {
+		filterTokens(&components, filters)
+	}
+	return &Expression{id, components, line, column}
+}
+
+func (parser *Parser) readExpression(raw *[]rune, tokens *[]*Token) (int, *Expression) {
+	id := -1
+	matchLength := -1
+	for key := 0; key <= uncappedNewlineId; key++ {
+		regex := expressionMatchers[key]
+		if match, _ := regex.FindRunesMatch(*raw); match != nil {
+			id = key
+			matchLength = match.RuneLength
+			break
+		}
+	}
+	if id == -1 {
+		return matchLength, nil
+	}
+	return matchLength, parser.makeExpression(id, (*tokens)[0:matchLength])
+}

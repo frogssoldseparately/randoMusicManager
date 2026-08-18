@@ -1,0 +1,4 @@
+github.com/dlclark/regexp2/v2 v2.7.1 h1:yqDtwI1ptXXvEUNpYTk2lad4jLtAcKqkzepn4savSk4=
+github.com/dlclark/regexp2/v2 v2.7.1/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
+github.com/frogssoldseparately/simpleseek/sreader v0.0.0-20260809060209-1cc7db118e69 h1:k9UYdwL+ct0wIgpmF9jPoiQxr4Gl598TcZuFGjA9m7k=
+github.com/frogssoldseparately/simpleseek/sreader v0.0.0-20260809060209-1cc7db118e69/go.mod h1:zI6o3UOnYBIppN8jOpGtu180N2/SNp/zsclleG+MYrY=

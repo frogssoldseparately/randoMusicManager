@@ -1,0 +1,61 @@
+Token {
+    // Fillers
+    ANY                 = `.`
+    LETTERS             = `[a-zA-Z]+`
+    CHARS               = `\S+`
+    NOCAPNEWLINE        = `(?=\r?\n)`
+    PERCENT             = `\%`
+    COLON               = `\:`
+    DOLLAR              = `\$`
+    POUND               = `\#`
+    SLASHES             = `\/\/`
+
+    // Patterns
+    varGet              : `PERCENT LETTERS`
+                            > leftTrim = 1
+    varSet              : `COLON LETTERS`
+                            > leftTrim = 1
+    varRef              : `DOLLAR LETTERS`
+                            > leftTrim = 1
+    funcName            : `POUND LETTERS`
+                            > leftTrim = 1
+    comment             : `SLASHES ANY*? NOCAPNEWLINE`
+                            > ignore = true
+    string              : `\"[^\"]*?\"`
+                            > trimChars = `"`
+    leftBrace           : `{`
+                            > empty = true
+    rightBrace          : `}`
+                            > empty = true
+    word                : `CHARS`
+    newline             : `\r?\n`
+                            > empty = true
+                            > parser.incrementLineNumber()
+    whitespace          : `\s+`
+                            > ignore = true
+}
+
+Expression {
+    // Fillers
+    STRUNIT             = `(word | varGet)`
+
+    // Patterns
+    stringlit           : `string`
+                        | `STRUNIT+? (newline|$)`
+                            > filters = []int{newlineId}
+    funcRef             : `funcName (word)*? newline`
+                            > filters = []int{newlineId}
+    varSetExp           : `varSet (?!newline)`
+    varRefExp           : `varRef leftBrace`
+                            > filters = []int{leftBraceId}
+    endblock            : `rightBrace`
+    uncappedNewline     : `newline`
+                            > ignore = true
+}
+
+Statement {
+    assignment          : `varSetExp stringlit`
+    modification        : `varRefExp (funcRef)*? endblock`
+                            > filters = []int{endblockId}
+    replacement         : `stringlit`
+}
