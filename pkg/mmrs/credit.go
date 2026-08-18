@@ -15,7 +15,7 @@ func AddCredits(mmrsPath string, bio *map[string]string) error {
 		return err
 	}
 	if _, ok := buffers["credits.txt"]; ok {
-		return fmt.Errorf("This archive already has a credits file")
+		return fmt.Errorf("this archive already has a credits file")
 	}
 	w, err := os.Create(mmrsPath)
 	if err != nil {

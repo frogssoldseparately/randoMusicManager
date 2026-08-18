@@ -237,7 +237,9 @@ func resolveString(str *Expression) (string, error) {
 func writeSong(original string, replacement string, manifestPath string, destFolder string) error {
 	destPath := filepath.Join(destFolder, replacement)
 	if _, err := os.Stat(destPath); err == nil {
-		return fmt.Errorf("%s already exists", destPath)
+		// just silently ignore this for now
+		return nil
+		// return fmt.Errorf("it already exists")
 	}
 	manifestFolder := filepath.Dir(manifestPath)
 	srcExt := filepath.Ext(original)
@@ -306,7 +308,6 @@ func execute(program []*Statement, srcFilePath string, destFolder string) error 
 			}
 			replacementParts := strings.Split(rawReplacement, "::")
 			if len(replacementParts) != 2 {
-				fmt.Printf("\n\"%s\"\n", rawReplacement)
 				return fmt.Errorf("Filename replacement at %d:%d is missing second argument", statement.line+1, statement.column+1)
 			}
 			original := strings.TrimSpace(replacementParts[0])
@@ -320,7 +321,7 @@ func execute(program []*Statement, srcFilePath string, destFolder string) error 
 			}
 			replacement := repPrefix + strings.TrimSpace(replacementParts[1]) + repSuffix
 			if err := writeSong(original, replacement, srcFilePath, destFolder); err != nil {
-				fmt.Printf("Could not write %s. Cause: %s\n", replacement, err)
+				fmt.Printf("Could not write %s\n\tCause: %s\n", replacement, err)
 			}
 		}
 	}

@@ -96,12 +96,11 @@ func exploreUsing() {
 		folderBase := filepath.Base(filepath.Dir(path))
 		if _, err := os.Stat(path); err == nil {
 			if err := ParseAndExecute(path, filepath.Join(destFolderPath, folderBase)); err != nil {
-				fmt.Printf("Could not parse %s. Cause: %s\n", path, err)
+				fmt.Printf("Could not parse %s\n\tCause: %s\n", path, err)
 			}
 		}
 	}
 }
 
 func writeManifest() {
-	fmt.Println("writeManifest currently doesn't do anything")
 }

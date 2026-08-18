@@ -14,6 +14,8 @@ func main() {
 	if len(*src) > 0 {
 		if len(*dest) > 0 {
 			parser.Setup()
+			fmt.Println("Parsing Manifests, Writing Files")
+			fmt.Println("This may take a little bit.")
 			if err := parser.ParseAndExecute(*src, *dest); err != nil {
 				fmt.Println(err)
 			}
