@@ -210,7 +210,7 @@ func resolveString(str *Expression) (string, error) {
 		}
 		out = comps[0].value
 		for _, varName := range targets {
-			if rep, err := getVarOnTop(varName); err != nil {
+			if rep, err := getVarOnTop(varName); err == nil {
 				out = strings.ReplaceAll(out, "%"+varName, rep)
 			} else {
 				return "", err
