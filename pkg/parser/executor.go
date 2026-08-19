@@ -15,6 +15,7 @@ var variableHooks map[string]*map[string]*[]*hookValue
 var bio map[string]string
 var scope int
 var fileScopes []int
+var currentManifest *variableValue
 
 type variableValue struct {
 	value string
@@ -32,6 +33,7 @@ func Setup() {
 	variables["fileend"] = &[]*variableValue{{"", 0}}
 	variables["_srcStack"] = &[]*variableValue{{"", 0}}
 	variables["_destStack"] = &[]*variableValue{{"", 0}}
+	variables["_songsManifest"] = &[]*variableValue{{"Authors:", 0}}
 	variableHooks = map[string]*map[string]*[]*hookValue{}
 	scope = 0
 	fileScopes = []int{0}
@@ -41,6 +43,7 @@ func Setup() {
 		"seq":       "",
 		"midi":      "",
 	}
+	currentManifest = (*variables["_songsManifest"])[0]
 }
 
 func ParseAndExecute(srcManifest string, destFolder string) error {
@@ -114,10 +117,7 @@ func getVarOnTop(varName string) (string, error) {
 	return out, nil
 }
 
-func putVarOnTop(varName string, value string) error {
-	if err := runHooks(varName, "prehookset"); err != nil {
-		return err
-	}
+func putVarOnTopHookless(varName string, value string) {
 	if stack, ok := variables[varName]; ok {
 		lastIndex := len(*stack) - 1
 		if (*stack)[lastIndex].scope == scope {
@@ -128,10 +128,14 @@ func putVarOnTop(varName string, value string) error {
 	} else {
 		variables[varName] = &[]*variableValue{{value, scope}}
 	}
-	if err := runHooks(varName, "posthookset"); err != nil {
+}
+
+func putVarOnTop(varName string, value string) error {
+	if err := runHooks(varName, "prehookset"); err != nil {
 		return err
 	}
-	return nil
+	putVarOnTopHookless(varName, value)
+	return runHooks(varName, "posthookset")
 }
 
 func putHookOnTop(varName string, funcName string, args []string) {
@@ -162,6 +166,8 @@ func runHook(funcName string, args []string) error {
 		exploreUsing()
 	case "writeManifest":
 		writeManifest()
+	case "assignManifest":
+		assignManifest()
 	default:
 		return fmt.Errorf("No such function \"%s\"", funcName)
 	}
@@ -233,7 +239,7 @@ func resolveString(str *Expression) (string, error) {
 	return out, nil
 }
 
-func writeSong(original string, replacement string, manifestPath string, destFolder string) error {
+func writeSong(original string, replacement string, manifestPath string, destFolder string) (string, error) {
 	manifestFolder := filepath.Dir(manifestPath)
 	srcExt := filepath.Ext(original)
 	var srcPath string
@@ -247,13 +253,13 @@ func writeSong(original string, replacement string, manifestPath string, destFol
 	case ".seq":
 		srcPath = filepath.Join(manifestFolder, "seq", original)
 	default:
-		return fmt.Errorf("%s is not a handled extension", srcExt)
+		return "", fmt.Errorf("%s is not a handled extension", srcExt)
 	}
 
 	if fs, err := os.Stat(srcPath); err != nil {
-		return fmt.Errorf("file does not exist")
+		return "", fmt.Errorf("file does not exist")
 	} else if fs.IsDir() {
-		return fmt.Errorf("is not a file")
+		return "", fmt.Errorf("is not a file")
 	}
 
 	destPath := filepath.Join(destFolder, replacement)
@@ -274,7 +280,7 @@ func writeSong(original string, replacement string, manifestPath string, destFol
 		destPath = filepath.Join(destFolder, fmt.Sprintf("%s (%s)%s", repName, formattedAuthors, repExt))
 		if _, err := os.Stat(destPath); err == nil {
 			// do not include the same song twice
-			return fmt.Errorf("sequence by these authors already exists at the destination")
+			return "", fmt.Errorf("sequence by these authors already exists at the destination")
 		}
 	}
 	for key := range bio {
@@ -284,7 +290,11 @@ func writeSong(original string, replacement string, manifestPath string, destFol
 			bio[key] = ""
 		}
 	}
-	return mmrs.MakeCreditedArchive(srcPath, destPath, &bio)
+	err := mmrs.MakeCreditedArchive(srcPath, destPath, &bio)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Base(destPath), nil
 }
 
 func execute(program []*Statement, srcFilePath string, destFolder string) error {
@@ -332,8 +342,10 @@ func execute(program []*Statement, srcFilePath string, destFolder string) error 
 				return err
 			}
 			replacement := repPrefix + strings.TrimSpace(replacementParts[1]) + repSuffix
-			if err := writeSong(original, replacement, srcFilePath, destFolder); err != nil {
+			if songName, err := writeSong(original, replacement, srcFilePath, destFolder); err != nil {
 				fmt.Printf("Could not write %s\n\tCause: %s\n", replacement, err)
+			} else {
+				currentManifest.value = fmt.Sprintf("%s\n\t%s: %s", currentManifest.value, bio["seq"], songName)
 			}
 		}
 	}

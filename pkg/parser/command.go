@@ -36,6 +36,12 @@ func enterFileScope() {
 	fileScopes = append(fileScopes, scope)
 }
 
+func assignManifest() {
+	putVarOnTopHookless("_songsManifest", "Authors:")
+	songManifests := variables["_songsManifest"]
+	currentManifest = (*songManifests)[len(*songManifests)-1]
+}
+
 func descopeVars() {
 	deletableVars := []string{}
 	for varName, varEntry := range variables {
@@ -84,14 +90,15 @@ func exploreUsing() {
 			}
 		}
 	} else {
-		folderNames := strings.Split(using, "&&")
-		for _, rawName := range folderNames {
+		folderNames := strings.SplitSeq(using, "&&")
+		for rawName := range folderNames {
 			trimmedName := strings.TrimSpace(rawName)
 			if len(trimmedName) > 0 {
 				paths = append(paths, filepath.Join(manifestFolderPath, trimmedName, "manifest.txt"))
 			}
 		}
 	}
+	heldManifest := currentManifest
 	for _, path := range paths {
 		folderBase := filepath.Base(filepath.Dir(path))
 		if _, err := os.Stat(path); err == nil {
@@ -100,7 +107,20 @@ func exploreUsing() {
 			}
 		}
 	}
+	currentManifest = heldManifest
 }
 
 func writeManifest() {
+	destFolderPath, _ := getVarOnTopHookless("_destStack")
+	destPath := filepath.Join(destFolderPath, "manifest.txt")
+	content := currentManifest.value
+	if content != "Authors:" {
+		w, err := os.Create(destPath)
+		if err != nil {
+			// unhandled for now
+			return
+		}
+		defer w.Close()
+		fmt.Fprint(w, content)
+	}
 }
