@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -235,32 +234,48 @@ func resolveString(str *Expression) (string, error) {
 }
 
 func writeSong(original string, replacement string, manifestPath string, destFolder string) error {
-	destPath := filepath.Join(destFolder, replacement)
-	if _, err := os.Stat(destPath); err == nil {
-		// just silently ignore this for now
-		return nil
-		// return fmt.Errorf("it already exists")
-	}
 	manifestFolder := filepath.Dir(manifestPath)
 	srcExt := filepath.Ext(original)
-	if srcExt == ".mmrs" {
-		srcPath := filepath.Join(manifestFolder, "mmrs", original)
-		srcR, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-		destW, err := os.Create(destPath)
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(destW, srcR); err != nil {
-			return err
-		}
-	} else if strings.Contains(srcExt, "seq") {
-		srcPath := filepath.Join(manifestFolder, "seq", original)
-		mmrs.ConvertToMmrs(srcPath, destPath)
-	} else {
+	var srcPath string
+	switch srcExt {
+	case ".mmrs":
+		srcPath = filepath.Join(manifestFolder, "mmrs", original)
+	case ".zseq":
+		fallthrough
+	case ".aseq":
+		fallthrough
+	case ".seq":
+		srcPath = filepath.Join(manifestFolder, "seq", original)
+	default:
 		return fmt.Errorf("%s is not a handled extension", srcExt)
+	}
+
+	if fs, err := os.Stat(srcPath); err != nil {
+		return fmt.Errorf("file does not exist")
+	} else if fs.IsDir() {
+		return fmt.Errorf("is not a file")
+	}
+
+	destPath := filepath.Join(destFolder, replacement)
+	if _, err := os.Stat(destPath); err == nil {
+		// add author names to disambiguate
+		repExt := filepath.Ext(replacement)
+		repName := filepath.Base(replacement)
+		repName = repName[0 : len(repName)-len(repExt)]
+		authors, err := getVarOnTopHookless("seq")
+		if err != nil {
+			authors = "UNKNOWN"
+		}
+		authorList := []string{}
+		for _, author := range strings.Split(authors, "&&") {
+			authorList = append(authorList, strings.TrimSpace(author))
+		}
+		formattedAuthors := strings.Join(authorList, ",")
+		destPath = filepath.Join(destFolder, fmt.Sprintf("%s (%s)%s", repName, formattedAuthors, repExt))
+		if _, err := os.Stat(destPath); err == nil {
+			// do not include the same song twice
+			return fmt.Errorf("sequence by these authors already exists at the destination")
+		}
 	}
 	for key := range bio {
 		if val, err := getVarOnTopHookless(key); err == nil {
@@ -269,10 +284,7 @@ func writeSong(original string, replacement string, manifestPath string, destFol
 			bio[key] = ""
 		}
 	}
-	if err := mmrs.AddCredits(destPath, &bio); err != nil {
-		return err
-	}
-	return nil
+	return mmrs.MakeCreditedArchive(srcPath, destPath, &bio)
 }
 
 func execute(program []*Statement, srcFilePath string, destFolder string) error {
