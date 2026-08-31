@@ -16,21 +16,21 @@ type Expression struct {
 }
 
 const (
-	funcRefId int = 1
 	varSetExpId int = 2
 	varRefExpId int = 3
 	endblockId int = 4
 	uncappedNewlineId int = 5
 	stringlitId int = 0
+	funcRefId int = 1
 )
 
 var expressionMatchers = map[int]*regexp2.Regexp{
-	uncappedNewlineId: regexp2.MustCompile(`^((\x09))`, regexOptions),
-	stringlitId: regexp2.MustCompile(`^((\x05)|((\x08|\x00)+?(\x09|$)))`, regexOptions),
 	funcRefId: regexp2.MustCompile(`^((\x03(\x08)*?\x09))`, regexOptions),
 	varSetExpId: regexp2.MustCompile(`^((\x01(?!\x09)))`, regexOptions),
 	varRefExpId: regexp2.MustCompile(`^((\x02\x06))`, regexOptions),
 	endblockId: regexp2.MustCompile(`^((\x07))`, regexOptions),
+	uncappedNewlineId: regexp2.MustCompile(`^((\x09))`, regexOptions),
+	stringlitId: regexp2.MustCompile(`^((\x05)|((\x08|\x00)+?(\x09|$)))`, regexOptions),
 }
 
 func filterTokens(tokens *[]*Token, filters []int) {
@@ -51,14 +51,14 @@ func (parser *Parser) makeExpression(id int, components []*Token) *Expression {
 	column := components[0].column
 
 	switch id {
-	case varRefExpId:
-		filters = []int{leftBraceId}
-	case uncappedNewlineId:
-		ignore = true
 	case stringlitId:
 		filters = []int{newlineId}
 	case funcRefId:
 		filters = []int{newlineId}
+	case varRefExpId:
+		filters = []int{leftBraceId}
+	case uncappedNewlineId:
+		ignore = true
 	default:
 		// do nothing
 	}

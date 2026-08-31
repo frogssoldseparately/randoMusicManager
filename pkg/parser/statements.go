@@ -16,9 +16,9 @@ type Statement struct {
 }
 
 const (
-	replacementId int = 2
 	assignmentId int = 0
 	modificationId int = 1
+	replacementId int = 2
 )
 
 var statementMatchers = map[int]*regexp2.Regexp{

@@ -33,7 +33,7 @@ func Setup() {
 	variables["fileend"] = &[]*variableValue{{"", 0}}
 	variables["_srcStack"] = &[]*variableValue{{"", 0}}
 	variables["_destStack"] = &[]*variableValue{{"", 0}}
-	variables["_songsManifest"] = &[]*variableValue{{"Authors:", 0}}
+	variables["_songsManifest"] = &[]*variableValue{{":songs", 0}}
 	variableHooks = map[string]*map[string]*[]*hookValue{}
 	scope = 0
 	fileScopes = []int{0}
@@ -290,7 +290,7 @@ func writeSong(original string, replacement string, manifestPath string, destFol
 			bio[key] = ""
 		}
 	}
-	err := mmrs.MakeCreditedArchive(srcPath, destPath, &bio)
+	err := mmrs.MakeCreditedArchive(srcPath, &destPath, &bio)
 	if err != nil {
 		return "", err
 	}
@@ -341,11 +341,16 @@ func execute(program []*Statement, srcFilePath string, destFolder string) error 
 			if err != nil {
 				return err
 			}
-			replacement := repPrefix + strings.TrimSpace(replacementParts[1]) + repSuffix
+			seqAuthors, err := getVarOnTopHookless("seq")
+			if err != nil {
+				return err
+			}
+			replacement := fmt.Sprintf("%s%s (%s)%s", repPrefix, strings.TrimSpace(replacementParts[1]), seqAuthors, repSuffix)
+
 			if songName, err := writeSong(original, replacement, srcFilePath, destFolder); err != nil {
 				fmt.Printf("Could not write %s\n\tCause: %s\n", replacement, err)
 			} else {
-				currentManifest.value = fmt.Sprintf("%s\n\t%s: %s", currentManifest.value, bio["seq"], songName)
+				currentManifest.value = fmt.Sprintf("%s\n\t%s", currentManifest.value, songName)
 			}
 		}
 	}

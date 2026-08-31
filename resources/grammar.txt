@@ -19,7 +19,7 @@ Token {
                             > leftTrim = 1
     funcName            : `POUND LETTERS`
                             > leftTrim = 1
-    comment             : `SLASHES ANY*? NOCAPNEWLINE`
+    comment             : `SLASHES ANY*? (NOCAPNEWLINE|$)`
                             > ignore = true
     string              : `\"[^\"]*?\"`
                             > trimChars = `"`
@@ -31,7 +31,7 @@ Token {
     newline             : `\r?\n`
                             > empty = true
                             > parser.incrementLineNumber()
-    whitespace          : `\s+`
+    whitespace          : `[^\S\r\n]+`
                             > ignore = true
 }
 

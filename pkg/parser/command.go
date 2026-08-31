@@ -37,7 +37,7 @@ func enterFileScope() {
 }
 
 func assignManifest() {
-	putVarOnTopHookless("_songsManifest", "Authors:")
+	putVarOnTopHookless("_songsManifest", ":songs")
 	songManifests := variables["_songsManifest"]
 	currentManifest = (*songManifests)[len(*songManifests)-1]
 }
@@ -81,6 +81,7 @@ func exploreUsing() {
 	manifestFilePath, _ := getVarOnTopHookless("_srcStack")
 	manifestFolderPath := filepath.Dir(manifestFilePath)
 	destFolderPath, _ := getVarOnTopHookless("_destStack")
+
 	paths := []string{}
 	if using == "*" {
 		files, _ := os.ReadDir(manifestFolderPath)
@@ -99,11 +100,14 @@ func exploreUsing() {
 		}
 	}
 	heldManifest := currentManifest
+	heldManifest.value = fmt.Sprintf("%s\n:folders", heldManifest.value)
 	for _, path := range paths {
 		folderBase := filepath.Base(filepath.Dir(path))
 		if _, err := os.Stat(path); err == nil {
 			if err := ParseAndExecute(path, filepath.Join(destFolderPath, folderBase)); err != nil {
 				fmt.Printf("Could not parse %s\n\tCause: %s\n", path, err)
+			} else {
+				heldManifest.value = fmt.Sprintf("%s\n\t%s", heldManifest.value, folderBase)
 			}
 		}
 	}
@@ -114,7 +118,7 @@ func writeManifest() {
 	destFolderPath, _ := getVarOnTopHookless("_destStack")
 	destPath := filepath.Join(destFolderPath, "manifest.txt")
 	content := currentManifest.value
-	if content != "Authors:" {
+	if content != ":songs" {
 		w, err := os.Create(destPath)
 		if err != nil {
 			// unhandled for now

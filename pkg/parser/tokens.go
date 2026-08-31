@@ -16,30 +16,30 @@ type Token struct {
 }
 
 const (
+	varGetId int = 0
 	varRefId int = 2
+	rightBraceId int = 7
+	varSetId int = 1
 	funcNameId int = 3
 	commentId int = 4
+	stringId int = 5
 	leftBraceId int = 6
 	wordId int = 8
 	newlineId int = 9
-	varGetId int = 0
-	varSetId int = 1
-	stringId int = 5
-	rightBraceId int = 7
 	whitespaceId int = 10
 )
 
 var tokenMatchers = map[int]*regexp2.Regexp{
-	commentId: regexp2.MustCompile(`^((\/\/.*?(?=\r?\n)))`, regexOptions),
+	commentId: regexp2.MustCompile(`^((\/\/.*?((?=\r?\n)|$)))`, regexOptions),
+	stringId: regexp2.MustCompile(`^((\"[^\"]*?\"))`, regexOptions),
 	leftBraceId: regexp2.MustCompile(`^(({))`, regexOptions),
 	wordId: regexp2.MustCompile(`^((\S+))`, regexOptions),
 	newlineId: regexp2.MustCompile(`^((\r?\n))`, regexOptions),
-	varGetId: regexp2.MustCompile(`^((\%[a-zA-Z]+))`, regexOptions),
-	varSetId: regexp2.MustCompile(`^((\:[a-zA-Z]+))`, regexOptions),
-	stringId: regexp2.MustCompile(`^((\"[^\"]*?\"))`, regexOptions),
-	rightBraceId: regexp2.MustCompile(`^((}))`, regexOptions),
 	whitespaceId: regexp2.MustCompile(`^((\s+))`, regexOptions),
+	varGetId: regexp2.MustCompile(`^((\%[a-zA-Z]+))`, regexOptions),
 	varRefId: regexp2.MustCompile(`^((\$[a-zA-Z]+))`, regexOptions),
+	rightBraceId: regexp2.MustCompile(`^((}))`, regexOptions),
+	varSetId: regexp2.MustCompile(`^((\:[a-zA-Z]+))`, regexOptions),
 	funcNameId: regexp2.MustCompile(`^((\#[a-zA-Z]+))`, regexOptions),
 }
 
@@ -54,27 +54,27 @@ func (parser *Parser) makeToken(id int, components []string) *Token {
 	bothTrim := 0
 
 	switch id {
-	case varSetId:
-		leftTrim = 1
-	case varRefId:
-		leftTrim = 1
-	case commentId:
-		ignore = true
-	case stringId:
-		trimChars = `"`
-	case rightBraceId:
-		empty = true
 	case whitespaceId:
 		ignore = true
 	case varGetId:
 		leftTrim = 1
+	case varSetId:
+		leftTrim = 1
 	case funcNameId:
 		leftTrim = 1
+	case stringId:
+		trimChars = `"`
 	case leftBraceId:
 		empty = true
 	case newlineId:
 		empty = true
 		parser.incrementLineNumber()
+	case varRefId:
+		leftTrim = 1
+	case commentId:
+		ignore = true
+	case rightBraceId:
+		empty = true
 	default:
 		// do nothing
 	}

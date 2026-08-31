@@ -6,12 +6,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/frogssoldseparately/simpleseek/sreader"
 )
 
-func MakeCreditedArchive(srcPath string, destPath string, bio *map[string]string) error {
+var simpleFanfareCategories = []string{"7", "8", "9"}
+
+func MakeCreditedArchive(srcPath string, destPath *string, bio *map[string]string) error {
 	buffers, err := getExistingArchiveEntries(srcPath)
 	if err != nil {
 		return err
@@ -19,7 +22,33 @@ func MakeCreditedArchive(srcPath string, destPath string, bio *map[string]string
 	if _, ok := buffers["credits.txt"]; !ok {
 		addCreditsToArchive(&buffers, bio, "title", "composers", "seq", "midi")
 	}
-	w, err := os.Create(destPath)
+	for k := range buffers {
+		if strings.Contains(k, ".bankmeta") {
+			lastRightParen := strings.LastIndex(*destPath, ")")
+			*destPath = (*destPath)[0:lastRightParen] + ",custombank).mmrs"
+			break
+		}
+	}
+	for k := range buffers {
+		if strings.Contains(k, ".zsound") {
+			lastRightParen := strings.LastIndex(*destPath, ")")
+			*destPath = (*destPath)[0:lastRightParen] + ",customsound).mmrs"
+			break
+		}
+	}
+	if catBuf, ok := buffers["categories.txt"]; ok {
+		catArr := strings.FieldsFunc(string(catBuf), func(r rune) bool {
+			return r == ',' || r == '-'
+		})
+		for _, fanfareCat := range simpleFanfareCategories {
+			if slices.Contains(catArr, fanfareCat) {
+				lastRightParen := strings.LastIndex(*destPath, ")")
+				*destPath = (*destPath)[0:lastRightParen] + ",fanfare).mmrs"
+				break
+			}
+		}
+	}
+	w, err := os.Create(*destPath)
 	if err != nil {
 		return err
 	}
